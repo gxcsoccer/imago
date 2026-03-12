@@ -1,0 +1,9 @@
+name: social_cover
+description: Eye-catching social media cover images and banners
+prefix: "bold social media cover image, eye-catching design, vibrant colors, strong visual hierarchy"
+suffix: "social media optimized, high contrast, scroll-stopping visual"
+example_expansions:
+  - intent: "AI product launch"
+    expanded: "bold social media cover image, eye-catching design, vibrant colors, strong visual hierarchy, a futuristic AI chip floating above an outstretched hand with holographic interface elements radiating outward, electric blue and magenta gradient background, dynamic diagonal composition, social media optimized, high contrast, scroll-stopping visual"
+  - intent: "year in review"
+    expanded: "bold social media cover image, eye-catching design, vibrant colors, strong visual hierarchy, a collage-style montage of abstract seasonal elements flowing in a spiral, winter snowflakes transitioning to spring blossoms to summer sun to autumn leaves, rich saturated palette, social media optimized, high contrast, scroll-stopping visual"

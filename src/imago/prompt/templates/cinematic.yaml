@@ -1,0 +1,9 @@
+name: cinematic
+description: Film-like visuals with dramatic lighting and composition
+prefix: "cinematic still frame, dramatic lighting, shallow depth of field, anamorphic lens flare, film grain"
+suffix: "35mm film, color graded, high production value"
+example_expansions:
+  - intent: "a lonely astronaut"
+    expanded: "cinematic still frame, dramatic lighting, shallow depth of field, anamorphic lens flare, film grain, a lone astronaut standing on a desolate alien landscape, silhouetted against a massive ringed planet rising on the horizon, warm golden backlight cutting through visor reflection, dust particles floating in low gravity, 35mm film, color graded, high production value"
+  - intent: "rainy city"
+    expanded: "cinematic still frame, dramatic lighting, shallow depth of field, anamorphic lens flare, film grain, rain-soaked neon-lit city street at night, reflections pooling on wet asphalt, a solitary figure with an umbrella walking away from camera, bokeh from distant traffic lights, 35mm film, color graded, high production value"

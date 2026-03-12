@@ -1,0 +1,36 @@
+[project]
+name = "imago"
+version = "0.1.0"
+description = "Programmable text-to-image pipeline powered by FLUX on Apple Silicon"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "pydantic-settings>=2.7",
+    "mflux>=0.9",
+    "anthropic>=0.52",
+    "httpx>=0.28",
+    "pyyaml>=6.0",
+    "aiosqlite>=0.21",
+]
+
+[project.scripts]
+imago = "imago.app:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/imago"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.25",
+    "pytest-httpx>=0.35",
+]

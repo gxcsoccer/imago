@@ -1,0 +1,9 @@
+name: finance_editorial
+description: Financial news and earnings report cover imagery
+prefix: "financial editorial illustration, corporate professional, modern data visualization aesthetic"
+suffix: "business magazine cover quality, polished, authoritative, trustworthy tone"
+example_expansions:
+  - intent: "HIMS earnings report cover"
+    expanded: "financial editorial illustration, corporate professional, modern data visualization aesthetic, abstract upward-trending growth chart dissolving into a mosaic of wellness and telehealth icons, deep navy and teal color palette with gold accent lines, clean geometric composition, business magazine cover quality, polished, authoritative, trustworthy tone"
+  - intent: "quarterly results tech company"
+    expanded: "financial editorial illustration, corporate professional, modern data visualization aesthetic, a stylized digital landscape with glowing data streams converging toward a rising bar chart, circuit-board patterns subtly embedded in the background, cool blue and silver palette, business magazine cover quality, polished, authoritative, trustworthy tone"

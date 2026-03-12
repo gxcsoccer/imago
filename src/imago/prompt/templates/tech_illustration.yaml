@@ -1,0 +1,9 @@
+name: tech_illustration
+description: Technology-themed illustrations for blogs, docs, and presentations
+prefix: "modern tech illustration, clean vector style, vibrant gradient colors, isometric perspective"
+suffix: "digital art, tech blog hero image, professional illustration"
+example_expansions:
+  - intent: "cloud computing"
+    expanded: "modern tech illustration, clean vector style, vibrant gradient colors, isometric perspective, a floating cloud infrastructure with interconnected servers, data flowing through glowing pipelines, small human figures interacting with holographic dashboards below, purple to blue gradient background, digital art, tech blog hero image, professional illustration"
+  - intent: "AI assistant"
+    expanded: "modern tech illustration, clean vector style, vibrant gradient colors, isometric perspective, a friendly robot assistant emerging from a smartphone screen, helping organize floating task cards and calendar items, warm orange and teal color scheme, digital art, tech blog hero image, professional illustration"

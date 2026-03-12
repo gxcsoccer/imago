@@ -1,0 +1,9 @@
+name: editorial
+description: Magazine-style editorial photography
+prefix: "editorial photography, magazine quality, sophisticated composition, natural lighting"
+suffix: "editorial style, refined aesthetic, print quality"
+example_expansions:
+  - intent: "modern office"
+    expanded: "editorial photography, magazine quality, sophisticated composition, natural lighting, a modern open-plan office with floor-to-ceiling windows overlooking a city skyline, mid-century modern furniture, warm afternoon light casting long shadows, people collaborating at a shared table, editorial style, refined aesthetic, print quality"
+  - intent: "coffee shop"
+    expanded: "editorial photography, magazine quality, sophisticated composition, natural lighting, an artisan coffee shop interior with exposed brick walls, barista pouring latte art, steam rising from espresso machine, warm earth tones, editorial style, refined aesthetic, print quality"

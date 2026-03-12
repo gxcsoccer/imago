@@ -1,0 +1,20 @@
+{
+  "id": "imago",
+  "name": "Imago",
+  "description": "Text-to-image generation pipeline powered by FLUX on Apple Silicon",
+  "version": "0.1.0",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "baseUrl": {
+        "type": "string",
+        "description": "Imago API base URL",
+        "default": "http://127.0.0.1:8420"
+      }
+    }
+  },
+  "uiHints": {
+    "baseUrl": { "label": "Imago API URL", "placeholder": "http://127.0.0.1:8420" }
+  }
+}

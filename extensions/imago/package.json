@@ -1,0 +1,12 @@
+{
+  "name": "imago",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Imago — text-to-image generation tool for OpenClaw agents",
+  "type": "module",
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

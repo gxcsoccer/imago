@@ -1,0 +1,9 @@
+name: product
+description: Clean product photography with studio lighting
+prefix: "professional product photography, studio lighting, clean white background, soft shadows"
+suffix: "commercial quality, sharp focus, high resolution, minimalist composition"
+example_expansions:
+  - intent: "wireless headphones"
+    expanded: "professional product photography, studio lighting, clean white background, soft shadows, premium wireless over-ear headphones floating at a slight angle, matte black finish with brushed aluminum accents, subtle reflection on surface below, commercial quality, sharp focus, high resolution, minimalist composition"
+  - intent: "skincare bottle"
+    expanded: "professional product photography, studio lighting, clean white background, soft shadows, elegant frosted glass skincare bottle with gold cap, morning dew droplets on surface, single green leaf accent, commercial quality, sharp focus, high resolution, minimalist composition"
