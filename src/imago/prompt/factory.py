@@ -102,7 +102,7 @@ class PromptFactory:
         label: str,
     ) -> str:
         headers = {"Authorization": f"Bearer {api_key}"}
-        async with httpx.AsyncClient(timeout=180, proxy=None) as client:
+        async with httpx.AsyncClient(timeout=180, proxy=None, trust_env=False) as client:
             resp = await client.post(
                 f"{base_url}/chat/completions",
                 headers=headers,

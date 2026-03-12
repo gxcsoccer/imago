@@ -9,7 +9,7 @@ dependencies = [
     "pydantic-settings>=2.7",
     "mflux>=0.9",
     "anthropic>=0.52",
-    "httpx>=0.28",
+    "httpx[socks]>=0.28",
     "pyyaml>=6.0",
     "aiosqlite>=0.21",
 ]
