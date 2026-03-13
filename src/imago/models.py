@@ -21,6 +21,12 @@ class GenerateRequest(BaseModel):
         None, description="Variables for cartesian product expansion"
     )
     callback_url: str | None = None
+    image_url: str | None = Field(
+        None, description="Reference image for img2img: local path or HTTP URL"
+    )
+    image_strength: float | None = Field(
+        None, ge=0.0, le=1.0, description="How much to preserve from reference image (0.0-1.0)"
+    )
 
 
 class ImageResult(BaseModel):

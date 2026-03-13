@@ -3,6 +3,10 @@ from __future__ import annotations
 import asyncio
 import itertools
 import logging
+import tempfile
+from pathlib import Path
+
+import httpx
 
 from imago.engine.generator import ImageGenerator
 from imago.engine.queue import TaskQueue
@@ -12,6 +16,31 @@ from imago.output.webhook import send_callback
 from imago.prompt.factory import PromptFactory
 
 logger = logging.getLogger(__name__)
+
+
+async def _resolve_image(image_url: str, output_dir: Path) -> str:
+    """Resolve an image URL to a local file path.
+
+    Supports local paths (returned as-is) and HTTP(S) URLs (downloaded to a
+    temporary file under *output_dir/_ref/*).
+    """
+    if not image_url.startswith(("http://", "https://")):
+        return image_url
+
+    ref_dir = output_dir / "_ref"
+    ref_dir.mkdir(parents=True, exist_ok=True)
+
+    async with httpx.AsyncClient(timeout=60) as client:
+        resp = await client.get(image_url)
+        resp.raise_for_status()
+
+    import os
+
+    fd, tmp_path = tempfile.mkstemp(suffix=".png", dir=str(ref_dir))
+    os.write(fd, resp.content)
+    os.close(fd)
+    logger.info("Downloaded reference image: %s -> %s", image_url, tmp_path)
+    return tmp_path
 
 
 def _expand_variables(req: GenerateRequest) -> list[GenerateRequest]:
@@ -50,6 +79,13 @@ async def run_worker(
             sub_requests = _expand_variables(req)
             results: list[ImageResult] = []
 
+            # Resolve reference image (shared across sub-requests)
+            ref_image_path: str | None = None
+            if req.image_url:
+                ref_image_path = await _resolve_image(
+                    req.image_url, output_mgr.output_dir
+                )
+
             # Count total images to generate
             total = sum(sr.count for sr in sub_requests)
 
@@ -66,8 +102,15 @@ async def run_worker(
                         height=sub_req.height,
                         steps=sub_req.steps,
                         seed=sub_req.seed,
+                        image_path=ref_image_path,
+                        image_strength=sub_req.image_strength,
                     )
-                    img_result = output_mgr.save(gen_result, sub_req.intent)
+                    img_result = output_mgr.save(
+                        gen_result,
+                        sub_req.intent,
+                        image_url=req.image_url,
+                        image_strength=sub_req.image_strength,
+                    )
                     results.append(img_result)
                     await queue.update_progress(task_id, len(results), total, results)
 

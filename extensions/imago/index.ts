@@ -120,6 +120,7 @@ export default {
     }
 
     registerGenerateTool(api, config, feishuCfg);
+    registerImg2ImgTool(api, config, feishuCfg);
     registerStylesTool(api, config);
     registerTaskStatusTool(api, config);
   },
@@ -273,6 +274,186 @@ function registerGenerateTool(
       },
     }),
     { names: ["imago_generate"] },
+  );
+}
+
+// ── imago_img2img ──────────────────────────────────────────
+
+function registerImg2ImgTool(
+  api: OpenClawPluginApi,
+  config: ImagoConfig,
+  feishuCfg: FeishuConfig | null,
+) {
+  api.registerTool(
+    (ctx) => ({
+      name: "imago_img2img",
+      description:
+        "Generate a new image based on a reference image (image-to-image). " +
+        "Use this when the user sends an image and wants to transform it " +
+        "(change style, enhance, reimagine), or to iterate on a previously " +
+        "generated image. Supports style templates and strength control. " +
+        "May take 1-3 minutes.",
+      parameters: {
+        type: "object" as const,
+        properties: {
+          intent: {
+            type: "string",
+            description:
+              "Description of desired changes or target style. Can be Chinese or English. " +
+              "Will be expanded into a detailed FLUX prompt by LLM.",
+          },
+          image_url: {
+            type: "string",
+            description:
+              "Reference image source: a local file path from a previous generation result, " +
+              "or an HTTP/HTTPS URL to download.",
+          },
+          image_strength: {
+            type: "number",
+            description:
+              "How much to preserve from the reference image (0.0 to 1.0). " +
+              "Low values (0.2-0.3) = mostly new image with hints of original. " +
+              "Medium (0.4-0.5) = balanced blend. " +
+              "High (0.6-0.8) = mostly preserve original with subtle changes. " +
+              "Default: 0.4",
+          },
+          style: {
+            type: "string",
+            enum: [
+              "cinematic",
+              "product",
+              "editorial",
+              "finance_editorial",
+              "tech_illustration",
+              "social_cover",
+            ],
+            description: "Optional style template to apply",
+          },
+          width: { type: "number", description: "Image width in pixels (default: 1024)" },
+          height: { type: "number", description: "Image height in pixels (default: 1024)" },
+          seed: { type: "number", description: "Random seed for reproducibility" },
+        },
+        required: ["intent", "image_url"],
+      },
+      execute: async (_toolCallId: string, args: Record<string, unknown>) => {
+        // If image_url is a Feishu message resource, download it first
+        let imageUrl = args.image_url as string;
+        if (feishuCfg && imageUrl.includes("/im/v1/messages/")) {
+          try {
+            const token = await getFeishuToken(feishuCfg);
+            const baseUrl = feishuCfg.domain === "lark"
+              ? "https://open.larksuite.com"
+              : "https://open.feishu.cn";
+            const resp = await fetch(`${baseUrl}${imageUrl.startsWith("/") ? "" : "/"}${imageUrl}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (resp.ok) {
+              const buffer = Buffer.from(await resp.arrayBuffer());
+              const tmpDir = path.join(config.baseUrl.replace(/^https?:\/\/[^/]+/, ""), "_ref");
+              const tmpPath = path.join("/tmp", `imago-ref-${Date.now()}.png`);
+              fs.writeFileSync(tmpPath, buffer);
+              imageUrl = tmpPath;
+              api.logger.info(`Imago: downloaded Feishu image to ${tmpPath}`);
+            }
+          } catch (err) {
+            api.logger.warn(`Imago: failed to download Feishu image: ${err}`);
+          }
+        }
+
+        const body: Record<string, unknown> = {
+          intent: args.intent,
+          image_url: imageUrl,
+        };
+        if (args.image_strength !== undefined) body.image_strength = args.image_strength;
+        if (args.style) body.style = args.style;
+        if (args.width) body.width = args.width;
+        if (args.height) body.height = args.height;
+        if (args.seed) body.seed = args.seed;
+
+        // Submit task
+        let resp: Response;
+        try {
+          resp = await fetch(`${config.baseUrl}/generate`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+        } catch (err) {
+          return `Imago 服务连接失败: ${err}. 请确认 Imago 服务正在运行。`;
+        }
+
+        if (!resp.ok) {
+          const text = await resp.text();
+          return `Imago error (${resp.status}): ${text}`;
+        }
+
+        const data = (await resp.json()) as { task_id: string };
+        const taskId = data.task_id;
+
+        // Poll until complete (max 5 minutes)
+        const maxWait = 300_000;
+        const pollInterval = 10_000;
+        const start = Date.now();
+
+        while (Date.now() - start < maxWait) {
+          await new Promise((r) => setTimeout(r, pollInterval));
+
+          let statusResp: Response;
+          try {
+            statusResp = await fetch(`${config.baseUrl}/tasks/${taskId}`);
+          } catch {
+            continue;
+          }
+
+          if (!statusResp.ok) continue;
+
+          const task = (await statusResp.json()) as {
+            task_id: string;
+            status: string;
+            images: { path: string; seed: number; prompt: string }[];
+            progress: { completed?: number; total?: number };
+            error?: string;
+          };
+
+          if (task.status === "completed" && task.images.length > 0) {
+            const senderId = ctx?.requesterSenderId;
+            let feishuSent = false;
+
+            if (feishuCfg && senderId) {
+              try {
+                const token = await getFeishuToken(feishuCfg);
+                for (const img of task.images) {
+                  if (fs.existsSync(img.path)) {
+                    const imageKey = await uploadImageToFeishu(feishuCfg, token, img.path);
+                    await sendFeishuImage(feishuCfg, token, senderId, imageKey);
+                    api.logger.info(`Imago: sent img2img result to Feishu (${img.path} → ${imageKey})`);
+                  }
+                }
+                feishuSent = true;
+              } catch (err) {
+                api.logger.warn(`Imago: Feishu image delivery failed: ${err}`);
+              }
+            }
+
+            if (feishuSent) {
+              return `图片已基于参考图生成并发送到飞书 (共 ${task.images.length} 张，seed: ${task.images.map((i) => i.seed).join(", ")})`;
+            }
+            const lines = [`图片已基于参考图生成完成 (共 ${task.images.length} 张):`];
+            for (const img of task.images) {
+              lines.push(`  - ${img.path} (seed: ${img.seed})`);
+            }
+            return lines.join("\n");
+          }
+
+          if (task.status === "failed") {
+            return `图片生成失败: ${task.error ?? "unknown error"}`;
+          }
+        }
+
+        return `图片生成超时 (task: ${taskId})，可以稍后用 imago_task_status 查询。`;
+      },
+    }),
+    { names: ["imago_img2img"] },
   );
 }
 

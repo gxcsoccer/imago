@@ -58,18 +58,25 @@ class ImageGenerator:
         height: int,
         steps: int,
         seed: int | None,
+        image_path: str | None = None,
+        image_strength: float | None = None,
     ) -> GeneratedImage:
         flux = self._load_model()
         if seed is None:
             seed = random.randint(0, 2**32 - 1)
 
-        result = flux.generate_image(
+        kwargs: dict[str, object] = dict(
             seed=seed,
             prompt=prompt,
             num_inference_steps=steps,
             height=height,
             width=width,
         )
+        if image_path is not None:
+            kwargs["image_path"] = image_path
+            kwargs["image_strength"] = image_strength if image_strength is not None else 0.4
+
+        result = flux.generate_image(**kwargs)
         return GeneratedImage(image=result, seed=seed, prompt=prompt)
 
     async def generate(
@@ -79,6 +86,8 @@ class ImageGenerator:
         height: int | None = None,
         steps: int | None = None,
         seed: int | None = None,
+        image_path: str | None = None,
+        image_strength: float | None = None,
     ) -> GeneratedImage:
         s = self.settings
         w = width or s.width
@@ -87,5 +96,5 @@ class ImageGenerator:
 
         async with _get_semaphore():
             return await asyncio.to_thread(
-                self._generate_sync, prompt, w, h, st, seed
+                self._generate_sync, prompt, w, h, st, seed, image_path, image_strength
             )
