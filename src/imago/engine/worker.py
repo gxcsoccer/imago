@@ -89,21 +89,46 @@ async def run_worker(
             # Count total images to generate
             total = sum(sr.count for sr in sub_requests)
 
+            is_img2img = ref_image_path is not None
+
             for sub_req in sub_requests:
                 if sub_req.raw_prompt:
                     prompt = sub_req.intent
                 else:
-                    prompt = await prompt_factory.expand(sub_req.intent, sub_req.style)
+                    prompt = await prompt_factory.expand(
+                        sub_req.intent, sub_req.style, is_img2img=is_img2img
+                    )
+
+                # For img2img, ensure enough effective denoising steps.
+                # In mflux, lower image_strength = more transformation.
+                # effective_steps = total_steps - init_time_step
+                # where init_time_step = int(total_steps * image_strength)
+                # So effective_steps ≈ total_steps * (1 - image_strength)
+                # We want at least ~12 effective steps for decent style transfer.
+                img2img_strength = sub_req.image_strength
+                steps = sub_req.steps
+                if is_img2img:
+                    strength = img2img_strength if img2img_strength is not None else 0.35
+                    img2img_strength = strength
+                    base_steps = steps or generator.settings.steps
+                    min_effective = 12
+                    effective = int(base_steps * (1 - strength))
+                    if effective < min_effective:
+                        steps = max(base_steps, int(min_effective / (1 - strength)) + 1)
+                        logger.info(
+                            "img2img: boosted steps %d -> %d (strength=%.2f, effective=%d)",
+                            base_steps, steps, strength, int(steps * (1 - strength)),
+                        )
 
                 for _ in range(sub_req.count):
                     gen_result = await generator.generate(
                         prompt=prompt,
                         width=sub_req.width,
                         height=sub_req.height,
-                        steps=sub_req.steps,
+                        steps=steps,
                         seed=sub_req.seed,
                         image_path=ref_image_path,
-                        image_strength=sub_req.image_strength,
+                        image_strength=img2img_strength,
                     )
                     img_result = output_mgr.save(
                         gen_result,

@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://localhost:11434/v1"
     qwen_model: str = "qwen2.5:14b"
 
+    # Model lifecycle
+    idle_timeout: int = 300  # seconds before unloading model from memory (0 = never)
+
     # Feishu (M4)
     feishu_webhook_url: str = ""
 

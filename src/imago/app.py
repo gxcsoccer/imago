@@ -39,6 +39,7 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
         worker_task = asyncio.create_task(
             run_worker(queue, generator, output_mgr, prompt_factory)
         )
+        await generator.start_idle_watcher()
         yield
         worker_task.cancel()
         await queue.close()

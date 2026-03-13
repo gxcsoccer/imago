@@ -123,6 +123,23 @@ export default {
     registerImg2ImgTool(api, config, feishuCfg);
     registerStylesTool(api, config);
     registerTaskStatusTool(api, config);
+
+    // Inject img2img guidance into agent system prompt
+    api.registerHook("before_prompt_build", () => ({
+      appendSystemContext: [
+        "## Imago 图片生成工具选择规则（必须遵守）",
+        "重要：当消息上下文中存在 MediaPath（即用户发送了图片），你必须使用 imago_img2img 工具，而不是 imago_generate。",
+        "- imago_img2img：用户发了图片 + 要求变换/修改/增强 → 必须用此工具。image_url 填 MediaPath 的值，intent 填用户的变换描述。",
+        "- imago_generate：用户没有发图片，只用文字描述想要的图片 → 用此工具。",
+        "",
+        "### image_strength 选择指南（重要）",
+        "image_strength 控制保留程度（0=完全忽略原图，1=完全保留原图）：",
+        "- 风格迁移（如转动漫/油画/水彩/赛博朋克）→ 用 0.25~0.35，大幅改变渲染风格",
+        "- 色调/氛围微调（如暖色调/复古感）→ 用 0.6~0.7，保留大部分原图",
+        "- 平衡混合 → 用 0.4~0.5",
+        "- 不要传 style 参数给 img2img，服务端会自动生成适合风格迁移的 prompt",
+      ].join("\n"),
+    }), { name: "imago-prompt-guidance" });
   },
 };
 
@@ -291,8 +308,9 @@ function registerImg2ImgTool(
         "Generate a new image based on a reference image (image-to-image). " +
         "Use this when the user sends an image and wants to transform it " +
         "(change style, enhance, reimagine), or to iterate on a previously " +
-        "generated image. Supports style templates and strength control. " +
-        "May take 1-3 minutes.",
+        "generated image. When the user sends an image in the conversation, " +
+        "use the MediaPath from the context as the image_url. " +
+        "Supports style templates and strength control. May take 1-3 minutes.",
       parameters: {
         type: "object" as const,
         properties: {
@@ -305,17 +323,18 @@ function registerImg2ImgTool(
           image_url: {
             type: "string",
             description:
-              "Reference image source: a local file path from a previous generation result, " +
-              "or an HTTP/HTTPS URL to download.",
+              "Reference image source: use MediaPath from context when user sends an image, " +
+              "a local file path from a previous imago_generate result, " +
+              "or an HTTP/HTTPS URL.",
           },
           image_strength: {
             type: "number",
             description:
-              "How much to preserve from the reference image (0.0 to 1.0). " +
-              "Low values (0.2-0.3) = mostly new image with hints of original. " +
-              "Medium (0.4-0.5) = balanced blend. " +
-              "High (0.6-0.8) = mostly preserve original with subtle changes. " +
-              "Default: 0.4",
+              "How much of the reference image to preserve (0.0=ignore completely, 1.0=keep exactly). " +
+              "For style transfer (anime, oil painting, watercolor): use 0.25-0.35 (low preservation = big change). " +
+              "For balanced blend: use 0.4-0.5. " +
+              "For subtle color/mood tweaks: use 0.6-0.7 (high preservation). " +
+              "Default: 0.35. The server auto-boosts inference steps for quality.",
           },
           style: {
             type: "string",

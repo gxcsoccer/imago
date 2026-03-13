@@ -24,6 +24,28 @@ Rules:
 - Do not wrap in quotes
 """
 
+IMG2IMG_SYSTEM_PROMPT = """\
+You are a prompt engineer for FLUX img2img (image-to-image style transfer).
+
+The user has a reference image and wants to transform it into a new style. Your task: \
+write a prompt that describes the TARGET STYLE the image should be transformed into.
+
+Rules:
+- Output ONLY the final prompt text in English, nothing else
+- Keep it under 150 words
+- Focus on the TARGET STYLE and aesthetic, NOT the scene content (the scene comes from the reference image)
+- Describe the art style, rendering technique, color palette, lighting mood, and texture
+- Use descriptive noun phrases separated by commas
+- Do not describe what's in the image — only describe HOW it should look
+- Do not include negative prompts or meta-instructions
+- Do not wrap in quotes
+
+Examples:
+- Intent "anime style" → "japanese anime art style, cel shading, clean lineart, vibrant flat colors, large expressive eyes, smooth skin rendering, soft ambient lighting, anime key visual quality, studio ghibli-inspired palette"
+- Intent "oil painting" → "classical oil painting on canvas, thick impasto brushstrokes, rich warm color palette, chiaroscuro lighting, renaissance composition, visible paint texture, museum quality fine art"
+- Intent "cyberpunk" → "cyberpunk aesthetic, neon-lit atmosphere, teal and magenta color grading, holographic overlays, rain-slicked reflections, futuristic UI elements, blade runner inspired, cinematic sci-fi mood"
+"""
+
 
 def _build_user_message(intent: str, style: StyleTemplate | None) -> str:
     parts = [f"User intent: {intent}"]
@@ -39,12 +61,21 @@ def _build_user_message(intent: str, style: StyleTemplate | None) -> str:
     return "\n".join(parts)
 
 
+def _build_img2img_user_message(intent: str) -> str:
+    return f"Transform the reference image into this style: {intent}"
+
+
 class PromptFactory:
     def __init__(self, settings: Settings, style_registry: StyleRegistry) -> None:
         self.settings = settings
         self.style_registry = style_registry
 
-    async def expand(self, intent: str, style_name: str | None = None) -> str:
+    async def expand(
+        self,
+        intent: str,
+        style_name: str | None = None,
+        is_img2img: bool = False,
+    ) -> str:
         style = self.style_registry.get(style_name) if style_name else None
 
         # If no LLM is configured, fall back to simple template-based expansion
@@ -56,7 +87,13 @@ class PromptFactory:
             logger.warning("No BAILIAN_API_KEY set, using template-only expansion")
             return self._template_fallback(intent, style)
 
-        user_msg = _build_user_message(intent, style)
+        # For img2img, use the style-focused system prompt and skip style templates
+        if is_img2img:
+            system_prompt = IMG2IMG_SYSTEM_PROMPT
+            user_msg = _build_img2img_user_message(intent)
+        else:
+            system_prompt = SYSTEM_PROMPT
+            user_msg = _build_user_message(intent, style)
 
         if provider == "bailian":
             return await self._expand_openai_compat(
@@ -65,6 +102,7 @@ class PromptFactory:
                 api_key=self.settings.bailian_api_key,
                 model=self.settings.bailian_model,
                 label="Bailian",
+                system_prompt=system_prompt,
             )
         if provider == "qwen":
             return await self._expand_openai_compat(
@@ -73,20 +111,23 @@ class PromptFactory:
                 api_key="ollama",
                 model=self.settings.qwen_model,
                 label="Qwen",
+                system_prompt=system_prompt,
             )
-        return await self._expand_claude(user_msg)
+        return await self._expand_claude(user_msg, system_prompt=system_prompt)
 
     def _template_fallback(self, intent: str, style: StyleTemplate | None) -> str:
         if style:
             return f"{style.prefix}, {intent}, {style.suffix}"
         return intent
 
-    async def _expand_claude(self, user_msg: str) -> str:
+    async def _expand_claude(
+        self, user_msg: str, system_prompt: str = SYSTEM_PROMPT
+    ) -> str:
         client = anthropic.AsyncAnthropic(api_key=self.settings.anthropic_api_key)
         response = await client.messages.create(
             model=self.settings.claude_model,
             max_tokens=512,
-            system=SYSTEM_PROMPT,
+            system=system_prompt,
             messages=[{"role": "user", "content": user_msg}],
         )
         text = response.content[0].text.strip()
@@ -100,6 +141,7 @@ class PromptFactory:
         api_key: str,
         model: str,
         label: str,
+        system_prompt: str = SYSTEM_PROMPT,
     ) -> str:
         headers = {"Authorization": f"Bearer {api_key}"}
         async with httpx.AsyncClient(timeout=180, proxy=None, trust_env=False) as client:
@@ -109,7 +151,7 @@ class PromptFactory:
                 json={
                     "model": model,
                     "messages": [
-                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_msg},
                     ],
                     "max_tokens": 512,

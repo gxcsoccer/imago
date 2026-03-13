@@ -25,7 +25,9 @@ class GenerateRequest(BaseModel):
         None, description="Reference image for img2img: local path or HTTP URL"
     )
     image_strength: float | None = Field(
-        None, ge=0.0, le=1.0, description="How much to preserve from reference image (0.0-1.0)"
+        None, ge=0.0, le=1.0,
+        description="How much of the reference image to preserve (0.0=ignore, 1.0=keep exactly). "
+                    "For style transfer use 0.25-0.35. For subtle edits use 0.5-0.7. Default 0.35.",
     )
 
 
