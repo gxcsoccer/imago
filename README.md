@@ -14,6 +14,7 @@ Imago converts natural language intents into images through an LLM-powered promp
 - **Webhook Callbacks** — real-time notifications with optional base64 images
 - **OpenClaw Plugin** — `imago_generate`, `imago_img2img`, `imago_styles` tools for AI agents
 - **Feishu Integration** — automatic image upload and delivery
+- **Auto Memory Management** — model auto-unloads after idle timeout (like ollama), reloads on demand
 
 ## Quick Start
 
@@ -52,7 +53,12 @@ curl -X POST http://localhost:8420/generate \
   }'
 ```
 
-`image_strength` controls how much of the reference image to preserve (0.0 = ignore, 1.0 = maximum preservation, default 0.4).
+`image_strength` controls how much of the reference image to preserve (0.0 = ignore, 1.0 = keep exactly):
+- `0.25-0.35` — style transfer (anime, oil painting, watercolor). Default for img2img.
+- `0.4-0.5` — balanced blend
+- `0.6-0.8` — subtle edits, preserve most of the original
+
+The server automatically boosts inference steps for img2img to ensure quality, and uses a style-focused prompt when `image_url` is present.
 
 ### Check Task Status
 
@@ -66,6 +72,14 @@ curl http://localhost:8420/tasks/{task_id}
 curl http://localhost:8420/styles
 ```
 
+### Server Status
+
+```bash
+curl http://localhost:8420/status
+```
+
+Returns model load state, idle time, and timeout configuration.
+
 ## Configuration
 
 All settings are configurable via environment variables (prefix `IMAGO_`). See [.env.example](.env.example) for the full list.
@@ -78,6 +92,7 @@ Key settings:
 | `IMAGO_STEPS` | 4 | Inference steps |
 | `IMAGO_LLM_PROVIDER` | bailian | Prompt expansion LLM (bailian / claude / qwen) |
 | `IMAGO_OUTPUT_DIR` | ./output | Generated image output directory |
+| `IMAGO_IDLE_TIMEOUT` | 300 | Seconds before unloading model from memory (0 = never) |
 
 ## Development
 

@@ -14,6 +14,7 @@ Imago 将自然语言意图通过 LLM 扩写为高质量 FLUX prompt，在本地
 - **Webhook 回调** — 任务完成/失败实时通知，可附带 base64 图片
 - **OpenClaw 插件** — `imago_generate`、`imago_img2img`、`imago_styles` 三个 Agent 工具
 - **飞书集成** — 自动上传图片并发送给用户
+- **自动内存管理** — 模型空闲超时后自动卸载释放内存（类似 ollama），有新任务时按需加载
 
 ## 快速开始
 
@@ -52,10 +53,12 @@ curl -X POST http://localhost:8420/generate \
   }'
 ```
 
-`image_strength` 控制参考图的保留程度：
-- `0.2-0.3` — 大幅改变，仅保留构图轮廓
-- `0.4-0.5` — 平衡混合（默认）
-- `0.6-0.8` — 高保留，仅微调色彩/风格
+`image_strength` 控制参考图的保留程度（0.0=完全忽略，1.0=完全保留）：
+- `0.25-0.35` — 风格迁移（动漫、油画、水彩等），img2img 默认值
+- `0.4-0.5` — 平衡混合
+- `0.6-0.8` — 微调，保留大部分原图
+
+服务端会自动提升 img2img 的推理步数以保证质量，并使用专门的风格迁移 prompt 模板。
 
 `image_url` 支持本地路径和 HTTP(S) URL（服务端自动下载）。
 
@@ -71,6 +74,14 @@ curl http://localhost:8420/tasks/{task_id}
 curl http://localhost:8420/styles
 ```
 
+### 服务状态
+
+```bash
+curl http://localhost:8420/status
+```
+
+返回模型加载状态、空闲时间和超时配置。
+
 ## 配置
 
 所有配置通过环境变量设置（前缀 `IMAGO_`），完整列表见 [.env.example](.env.example)。
@@ -83,6 +94,7 @@ curl http://localhost:8420/styles
 | `IMAGO_STEPS` | 4 | 推理步数 |
 | `IMAGO_LLM_PROVIDER` | bailian | prompt 扩写 LLM（bailian / claude / qwen） |
 | `IMAGO_OUTPUT_DIR` | ./output | 图片输出目录 |
+| `IMAGO_IDLE_TIMEOUT` | 300 | 模型空闲多久后自动卸载（秒，0=不卸载） |
 
 ## 开发
 
