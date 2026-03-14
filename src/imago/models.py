@@ -3,8 +3,9 @@ from __future__ import annotations
 from datetime import datetime
 from enum import Enum
 from typing import Any
+from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class GenerateRequest(BaseModel):
@@ -29,6 +30,35 @@ class GenerateRequest(BaseModel):
         description="How much of the reference image to preserve (0.0=ignore, 1.0=keep exactly). "
                     "For style transfer use 0.25-0.35. For subtle edits use 0.5-0.7. Default 0.35.",
     )
+
+    @field_validator("callback_url")
+    @classmethod
+    def validate_callback_url(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        parsed = urlparse(v)
+        if parsed.scheme not in ("http", "https"):
+            raise ValueError(
+                f"callback_url scheme must be 'http' or 'https', got {parsed.scheme!r}"
+            )
+        if not parsed.hostname:
+            raise ValueError("callback_url must include a hostname")
+        return v
+
+    @field_validator("image_url")
+    @classmethod
+    def validate_image_url(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        parsed = urlparse(v)
+        # Allow local paths (empty scheme) but reject any non-HTTP URI scheme
+        # to prevent file://, ftp://, data:// etc. from reaching the worker.
+        if parsed.scheme and parsed.scheme not in ("http", "https"):
+            raise ValueError(
+                f"image_url scheme must be 'http' or 'https' (or a bare local path), "
+                f"got {parsed.scheme!r}"
+            )
+        return v
 
 
 class ImageResult(BaseModel):

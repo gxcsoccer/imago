@@ -48,8 +48,7 @@ def mock_generator(mock_image: MagicMock) -> AsyncMock:
 def client(test_settings: Settings, mock_generator: AsyncMock) -> TestClient:
     from imago.app import create_app
 
-    app = create_app(test_settings)
+    app = create_app(test_settings, _generator=mock_generator)
     # Use lifespan context so queue gets initialized
     with TestClient(app, raise_server_exceptions=True) as c:
-        app.state.generator = mock_generator
         yield c

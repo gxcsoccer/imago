@@ -27,6 +27,10 @@ async def _resolve_image(image_url: str, output_dir: Path) -> str:
     if not image_url.startswith(("http://", "https://")):
         return image_url
 
+    from imago.security import assert_safe_url
+
+    assert_safe_url(image_url)
+
     ref_dir = output_dir / "_ref"
     ref_dir.mkdir(parents=True, exist_ok=True)
 

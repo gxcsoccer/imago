@@ -15,7 +15,10 @@ from imago.prompt.styles import StyleRegistry
 from imago.routes import generate, tasks
 
 
-def create_app(app_settings: Settings | None = None) -> FastAPI:
+def create_app(
+    app_settings: Settings | None = None,
+    _generator: ImageGenerator | None = None,
+) -> FastAPI:
     s = app_settings or settings
 
     logging.basicConfig(
@@ -28,7 +31,7 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
     style_registry.load_directory()
 
     # Core components
-    generator = ImageGenerator(s)
+    generator = _generator or ImageGenerator(s)
     output_mgr = OutputManager(s)
     prompt_factory = PromptFactory(s, style_registry)
     queue = TaskQueue()
@@ -39,7 +42,8 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
         worker_task = asyncio.create_task(
             run_worker(queue, generator, output_mgr, prompt_factory)
         )
-        await generator.start_idle_watcher()
+        if isinstance(generator, ImageGenerator):
+            await generator.start_idle_watcher()
         yield
         worker_task.cancel()
         await queue.close()
